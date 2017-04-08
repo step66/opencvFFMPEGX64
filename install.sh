@@ -1,80 +1,108 @@
 #!/bin/bash -x
 
-# taken from: http://blog.mycodesite.com/compile-opencv-with-ffmpeg-for-ubuntudebian/
+# http://mukeshchomu.blogspot.sg/2013/06/most-complete-guide-for-installing.html?m=1
 
-# The first step is to add the ffmpeg ppa with some of the required dependencies:
+# 1. Remove old ffmpeg and x264
+sudo apt-get remove ffmpeg x264 libx264-dev libav-tools libvpx-dev
 
-sudo add-apt-repository ppa:jon-severinsson/ffmpeg  
+# 2. Install all dependencies for ffmpeg and x264
+sudo apt-get install build-essential checkinstall git cmake libfaac-dev libjack-jackd2-dev libmp3lame-dev libopencore-amrnb-dev libopencore-amrwb-dev libsdl1.2-dev libtheora-dev libva-dev libvdpau-dev libvorbis-dev libx11-dev libxfixes-dev libxvidcore-dev texi2html yasm zlib1g-dev pkg-config
 
-# Installing FFMPEG dependencies
-sudo apt-get install build-essential checkinstall git cmake libfaac-dev libjack-jackd2-dev libmp3lame-dev libopencore-amrnb-dev libopencore-amrwb-dev libsdl1.2-dev libtheora-dev libva-dev libvdpau-dev libvorbis-dev libx11-dev libxfixes-dev libxvidcore-dev texi2html yasm zlib1g-dev libsdl1.2-dev libvpx-dev
+# Download and install yasm 1.2.0 from here
+./configure --prefix=/usr
+make
+sudo make install
 
-# Installing Gstreamer
-sudo apt-get install libgstreamer0.10-0 libgstreamer0.10-dev gstreamer0.10-tools gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-ugly gstreamer0.10-plugins-bad gstreamer0.10-ffmpeg
+# Image I/O
+sudo apt-get install libtiff4-dev libjpeg-dev libjasper-dev
 
-# Installing libgtk2
-sudo apt-get install libgtk2.0-0 libgtk2.0-dev  
-# Installing libjpeg
-sudo apt-get install libjpeg8 libjpeg8-dev  
+# Video I/O
+sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libdc1394-22-dev libxine-dev libgstreamer0.10-dev libgstreamer-plugins-base0.10-dev libv4l-dev
 
-# Compile required libraries
-# Now we need to compile some packages from source.
+# Python
+sudo apt-get install python-dev python-numpy
 
-# IMPORTANT!! The following commands are for 64bits OS. If you have 32 bits remove --enable-pic from all ./configure
+# Download and install libjpeg
+sudo apt-get install libjpeg8 libjpeg8-dev
 
-# Create a folder with the source code of all required packages:
+# Other third-party libraries
+sudo apt-get install libtbb-dev 
 
-mkdir ~/source  
-mkdir ~/source/x264  
-mkdir ~/source/v4l  
-mkdir ~/source/opencv  
-mkdir ~/source/ffmpeg  
+# GUI
+sudo apt-get install libqt4-dev libgtk2.0-dev
 
-# Compile X264
-cd ~/source/x264  
-wget ftp://ftp.videolan.org/pub/videolan/x264/snapshots/x264-snapshot-20120528-2245-stable.tar.bz2  
-tar xvf x264-snapshot-20120528-2245-stable.tar.bz2  
-cd x264-snapshot-20120528-2245-stable  
-./configure --enable-shared --enable-pic
-make  
-sudo make install  
+# 3. Install x.264 and ffmpeg
+# In install x264 and ffmpeg, I mainly follow the guide given at [3]. Below are the main steps.
+# X264
+# Download and install latest x264 from videolan.org.
+git clone --depth 1 git://git.videolan.org/x264
+cd x264
+./configure --enable-static --enable-shared
+make
+sudo checkinstall --pkgname=x264 --pkgversion="3:$(./version.sh | awk -F'[" ]' '/POINT/{print $4"+git"$5}')" --backup=no --deldoc=yes --fstrans=no --default
 
-# Compile ffmpeg
-cd ~/source/ffmpeg  
-wget http://ffmpeg.org/releases/ffmpeg-0.11.1.tar.bz2  
-tar xvf ffmpeg-0.11.1.tar.bz2  
-cd ffmpeg-0.11.1  
+# libvpx
 
-# Now we've to configure it with the flags of the dependencies installed before. Don't forget to remove --enable-pic if you have a 32bit system.
+git clone --depth 1 http://git.chromium.org/webm/libvpx.git
+cd libvpx
+./configure --enable-shared
+make
+sudo checkinstall --pkgname=libvpx --pkgversion="1:$(date +%Y%m%d%H%M)-git" --backup=no \--deldoc=yes --fstrans=no --default
 
-./configure --enable-gpl --enable-libfaac --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libtheora --enable-libvorbis --enable-libx264 --enable-libxvid --enable-nonfree --enable-postproc --enable-version3 --enable-x11grab --enable-shared --enable-libvpx --enable-pic
 
-# Compilation will take some time...be patient.
+#If you get some error like "relocation R_X86_64_32 against `a local symbol' can not be used when making a shared object; recompile with -fPIC",  compile libvpx with  "fPIC" option. You can do it with the following modified configure command": CFLAGS=-fPIC ./configure --enable-shared
 
-make  
-sudo make install  
 
-# Compile v4l
-cd ~/source/v4l  
-wget http://www.linuxtv.org/downloads/v4l-utils/v4l-utils-0.8.8.tar.bz2  
-tar xvf v4l-utils-0.8.8.tar.bz2  
-cd v4l-utils-0.8.8  
-make  
-sudo make install  
+# Install librtmp
+apt-get install librtmp-dev
+# FFMPEG
+# Downlaod latest ffmpeg 1.2.1 from here. Go to the download folder and run the following commands:
+tar -xvf ffmpeg-1.2.1.tar.bz2
+cd ffmpeg-1.2.1/
+./configure --enable-gpl --enable-libfaac --enable-libmp3lame --enable-libopencore-amrnb   --enable-libopencore-amrwb --enable-librtmp --enable-libtheora --enable-libvorbis   --enable-libvpx --enable-libx264 --enable-nonfree --enable-version3 --enable-x11grab --enable-shared --enable-pic
+make
+sudo make install
 
-# Compile OpenCV
-cd ~/source/opencv  
+# 4. Install OpenCV
+# Get a copy of the latest source code here for OpenCV 2.4.5. Open a terminal and go to the directory where you have downloaded the tar file, and run the following commands:
+tar -xvf opencv-2.4.5.tar.gz
+cd opencv-2.4.5/
+mkdir build
+cd build/
+cmake -D WITH_QT=ON -D WITH_XINE=ON -D WITH_OPENGL=ON -D WITH_TBB=ON -D BUILD_EXAMPLES=ON CMAKE_BUILD_TYPE=RELEASE -D BUILD_NEW_PYTHON_SUPPORT=ON -D CMAKE_INSTALL_PREFIX=/usr/local ..
+make
+sudo make install
 
-# Download last version source code. You can get it from here. I'll use version 2.4.9
+# 5. Configure OpenCV
+# We need to tell linux where the shared libraries for OpenCV are located by entering the following shell command:
+export LD_LIBRARY_PATH=/usr/local/lib
 
-wget http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-unix/2.4.9/opencv-2.4.9.zip  
-unzip opencv-2.4.9.zip  
-cd opencv-2.4.9  
-mkdir release  
-cd release  
-cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON .. 
+# Add the command to your .bashrc file so that you don’t have to enter every time your start a new terminal.
+# Alternatively, you can configure the system wide library search path. Using your favorite editor, add a single line containing the text /usr/local/lib to the end of a file named/etc/ld.so.conf.d/opencv.conf. In the standard Ubuntu install, the opencv.conf file does not exist; you need to create it. Using vi, for example, enter the following commands:
 
-# After this step you will see the installation summary. Make sure the Video I/O section has ffmpeg, gstreamer, etc enabled! Finally we just need to compile and install it!
+## sudo vi /etc/ld.so.conf.d/opencv.conf
+# G
+# o
+# /usr/local/lib
+# :wq!
 
-make  
-sudo make install  
+# After editing the opencv.conf file, enter the following command:
+sudo ldconfig /etc/ld.so.conf
+
+## Using your favorite editor, add the following two lines to the end of /etc/bash.bashrc:
+
+# PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig
+# export PKG_CONFIG_PATH
+
+# After completing the previous steps, your system should be ready to compile code that uses the OpenCV libraries. The following example shows one way to compile code for OpenCV:
+g++ `pkg-config opencv --cflags` my_code.cpp  -o my_code `pkg-config opencv --libs` 
+
+# If you are using a Makefile, append CFLAGS and LDFLAGS as follows:
+#Compiler flags
+CFLAGS=-c `pkg-config opencv --cflags`
+#Linker flags
+LDFLAGS= `pkg-config opencv --libs`
+# Note: Sometimes Makefile does not include libraries if you put LDFLAGS in the middle of link command, i.e.
+g++ $(OBJECTS) $(LDFLAGS) -o output
+# It is better to put $(LDFLAGS) at the end of the command after specifying output file, i.e. 
+g++ $(OBJECTS) -o output $(LDFLAGS)
